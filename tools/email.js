@@ -1,4 +1,5 @@
 import nodemailer from "nodemailer";
+import { demoId, demoTimestamp, isDemoMode } from "./demo.js";
 
 function transporter() {
   const host = process.env.SMTP_HOST;
@@ -31,6 +32,26 @@ export const tools = [
       },
     },
     handler: async ({ to, subject, body, html, replyTo, cc, from }) => {
+      if (isDemoMode()) {
+        return {
+          demo: true,
+          messageId: `<${demoId("email")}@demo.gtm-mcp-server>`,
+          accepted: [to],
+          rejected: [],
+          envelope: {
+            from: from || process.env.SMTP_USER || "sales@example.com",
+            to,
+            cc: cc || null,
+            replyTo: replyTo || null,
+          },
+          preview: {
+            subject,
+            text: body,
+            html: Boolean(html),
+          },
+        };
+      }
+
       const t = transporter();
       const info = await t.sendMail({
         from: from || process.env.SMTP_USER,
@@ -46,7 +67,7 @@ export const tools = [
   },
   {
     name: "email_log_activity",
-    description: "Log an email activity record (sent/received) — writes to stdout for downstream ingestion into CRM or data store",
+    description: "Log an email activity record (sent/received) — emits structured activity for downstream CRM or data-store ingestion",
     inputSchema: {
       type: "object",
       required: ["direction", "contact_email", "subject"],
@@ -64,13 +85,13 @@ export const tools = [
     handler: async ({ hubspot_contact_id, timestamp, ...activity }) => {
       const record = {
         ...activity,
-        timestamp: timestamp || new Date().toISOString(),
-        logged_at: new Date().toISOString(),
+        timestamp: timestamp || demoTimestamp(),
+        logged_at: demoTimestamp(),
       };
 
       // If a HubSpot contact ID is supplied, log an engagement via HubSpot API
-      if (hubspot_contact_id) {
-        const token = process.env.HUBSPOT_API_KEY;
+      if (hubspot_contact_id && !isDemoMode()) {
+        const token = process.env.HUBSPOT_ACCESS_TOKEN;
         if (token) {
           const { default: axios } = await import("axios");
           await axios.post(
@@ -95,7 +116,12 @@ export const tools = [
         }
       }
 
-      console.log(JSON.stringify({ event: "email_activity", ...record }));
+      if (isDemoMode() && hubspot_contact_id) {
+        record.hubspot_logged = true;
+        record.hubspot_email_id = demoId("hubspot_email");
+      }
+
+      console.error(JSON.stringify({ event: "email_activity", ...record }));
       return record;
     },
   },

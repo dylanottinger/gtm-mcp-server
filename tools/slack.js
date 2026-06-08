@@ -1,4 +1,5 @@
 import axios from "axios";
+import { demoId, isDemoMode } from "./demo.js";
 
 function client() {
   const token = process.env.SLACK_BOT_TOKEN;
@@ -23,6 +24,16 @@ export const tools = [
       },
     },
     handler: async ({ channel, message, username = "GTM Bot" }) => {
+      if (isDemoMode()) {
+        return {
+          demo: true,
+          ts: "1780941600.000100",
+          channel,
+          username,
+          message,
+        };
+      }
+
       const { data } = await client().post("/chat.postMessage", {
         channel,
         text: message,
@@ -57,6 +68,22 @@ export const tools = [
       },
     },
     handler: async ({ channel, lead }) => {
+      if (isDemoMode()) {
+        return {
+          demo: true,
+          ts: "1780941600.000200",
+          channel,
+          notification_id: demoId("lead_notification"),
+          lead: {
+            name: lead.name || "Maya Patel",
+            title: lead.title || "Head of Growth",
+            company: lead.company || "Northstar Analytics",
+            email: lead.email || "maya.patel@example.com",
+            score: lead.score ?? 87,
+          },
+        };
+      }
+
       const fields = [
         lead.title && { type: "mrkdwn", text: `*Title*\n${lead.title}` },
         lead.company && { type: "mrkdwn", text: `*Company*\n${lead.company}` },

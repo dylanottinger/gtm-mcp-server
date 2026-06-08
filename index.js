@@ -21,29 +21,40 @@ const server = new McpServer({
   version: "1.0.0",
 });
 
-// Convert JSON Schema properties to zod shape for MCP SDK registration
-function jsonSchemaToZod(properties = {}, required = []) {
-  const shape = {};
-  for (const [key, def] of Object.entries(properties)) {
-    let field;
-    if (def.type === "string") {
-      field = def.enum ? z.enum(def.enum) : z.string();
-    } else if (def.type === "number") {
-      field = z.number();
-    } else if (def.type === "boolean") {
-      field = z.boolean();
-    } else if (def.type === "array") {
-      field = z.array(z.any());
-    } else {
-      field = z.any();
-    }
+function schemaToZod(def = {}, isRequired = true) {
+  let field;
 
-    if (def.description) field = field.describe(def.description);
-    if (!required.includes(key)) field = field.optional();
-
-    shape[key] = field;
+  if (def.enum?.length) {
+    field = z.enum(def.enum);
+  } else if (def.type === "string") {
+    field = z.string();
+  } else if (def.type === "number" || def.type === "integer") {
+    field = z.number();
+  } else if (def.type === "boolean") {
+    field = z.boolean();
+  } else if (def.type === "array") {
+    field = z.array(schemaToZod(def.items || {}, true));
+  } else if (def.type === "object") {
+    field = z.object(jsonSchemaToZod(def.properties || {}, def.required || [])).passthrough();
+  } else {
+    field = z.any();
   }
-  return shape;
+
+  if (def.description) field = field.describe(def.description);
+  if (def.default !== undefined) field = field.default(def.default);
+  if (!isRequired && def.default === undefined) field = field.optional();
+
+  return field;
+}
+
+// Convert the tool files' small JSON Schema subset into a Zod shape for MCP SDK registration.
+function jsonSchemaToZod(properties = {}, required = []) {
+  return Object.fromEntries(
+    Object.entries(properties).map(([key, def]) => [
+      key,
+      schemaToZod(def, required.includes(key)),
+    ])
+  );
 }
 
 for (const tool of allTools) {

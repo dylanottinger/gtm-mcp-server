@@ -1,10 +1,11 @@
 import axios from "axios";
+import { demoId, demoTimestamp, isDemoMode } from "./demo.js";
 
 const BASE = "https://api.hubapi.com";
 
 function client() {
-  const token = process.env.HUBSPOT_API_KEY;
-  if (!token) throw new Error("HUBSPOT_API_KEY not set");
+  const token = process.env.HUBSPOT_ACCESS_TOKEN;
+  if (!token) throw new Error("HUBSPOT_ACCESS_TOKEN not set");
   return axios.create({
     baseURL: BASE,
     headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
@@ -28,6 +29,21 @@ export const tools = [
       },
     },
     handler: async ({ email, ...rest }) => {
+      if (isDemoMode()) {
+        return {
+          demo: true,
+          id: demoId("contact"),
+          properties: {
+            email,
+            firstname: rest.firstname || "Avery",
+            lastname: rest.lastname || "Chen",
+            company: rest.company || "Northstar Analytics",
+            jobtitle: rest.jobtitle || "VP of Revenue",
+            createdate: demoTimestamp(),
+          },
+        };
+      }
+
       const { data } = await client().post("/crm/v3/objects/contacts", {
         properties: { email, ...rest },
       });
@@ -51,6 +67,21 @@ export const tools = [
       },
     },
     handler: async ({ contactId, ...properties }) => {
+      if (isDemoMode()) {
+        return {
+          demo: true,
+          id: contactId,
+          properties: {
+            email: "avery.chen@example.com",
+            firstname: "Avery",
+            lastname: "Chen",
+            lifecyclestage: "salesqualifiedlead",
+            ...properties,
+            lastmodifieddate: demoTimestamp(),
+          },
+        };
+      }
+
       const { data } = await client().patch(`/crm/v3/objects/contacts/${contactId}`, { properties });
       return { id: data.id, properties: data.properties };
     },
@@ -72,6 +103,22 @@ export const tools = [
       },
     },
     handler: async ({ associatedContactId, ...properties }) => {
+      if (isDemoMode()) {
+        return {
+          demo: true,
+          id: demoId("deal"),
+          associatedContactId: associatedContactId || null,
+          properties: {
+            dealname: properties.dealname,
+            pipeline: properties.pipeline,
+            dealstage: properties.dealstage,
+            amount: properties.amount || 42000,
+            closedate: properties.closedate || "2026-07-31",
+            createdate: demoTimestamp(),
+          },
+        };
+      }
+
       const { data } = await client().post("/crm/v3/objects/deals", { properties });
       if (associatedContactId) {
         await client().put(`/crm/v3/objects/deals/${data.id}/associations/contacts/${associatedContactId}/3`);
@@ -91,6 +138,27 @@ export const tools = [
       },
     },
     handler: async ({ query, limit = 10 }) => {
+      if (isDemoMode()) {
+        return [
+          {
+            id: demoId("company"),
+            name: query.includes(".") ? "Northstar Analytics" : query,
+            domain: query.includes(".") ? query : "northstaranalytics.example",
+            industry: "Computer Software",
+            numberofemployees: "220",
+            annualrevenue: "18000000",
+          },
+          {
+            id: demoId("company"),
+            name: "SignalForge",
+            domain: "signalforge.example",
+            industry: "Marketing Technology",
+            numberofemployees: "95",
+            annualrevenue: "7400000",
+          },
+        ].slice(0, limit);
+      }
+
       const { data } = await client().post("/crm/v3/objects/companies/search", {
         query,
         limit,
@@ -111,6 +179,21 @@ export const tools = [
       },
     },
     handler: async ({ contactId, limit = 20 }) => {
+      if (isDemoMode()) {
+        const activity = [
+          { id: demoId("email"), subject: "Intro follow-up", occurred_at: "2026-06-03T16:30:00.000Z" },
+          { id: demoId("call"), outcome: "Connected", occurred_at: "2026-06-05T18:00:00.000Z" },
+          { id: demoId("note"), body: "Interested in Clay + HubSpot workflow automation.", occurred_at: demoTimestamp() },
+        ].slice(0, limit);
+
+        return [
+          { type: "emails", items: activity.filter((item) => item.id.startsWith("email_")) },
+          { type: "calls", items: activity.filter((item) => item.id.startsWith("call_")) },
+          { type: "notes", items: activity.filter((item) => item.id.startsWith("note_")) },
+          { type: "meetings", items: [{ id: demoId("meeting"), title: "Discovery call", contactId }] },
+        ];
+      }
+
       const types = ["emails", "calls", "notes", "meetings"];
       const results = await Promise.all(
         types.map((t) =>

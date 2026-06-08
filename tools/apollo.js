@@ -1,10 +1,11 @@
 import axios from "axios";
+import { demoId, isDemoMode } from "./demo.js";
 
 function client() {
   const token = process.env.APOLLO_API_KEY;
   if (!token) throw new Error("APOLLO_API_KEY not set");
   return axios.create({
-    baseURL: "https://api.apollo.io/v1",
+    baseURL: "https://api.apollo.io/api/v1",
     headers: { "x-api-key": token, "Content-Type": "application/json" },
   });
 }
@@ -46,7 +47,35 @@ export const tools = [
       },
     },
     handler: async ({ page = 1, per_page = 25, ...filters }) => {
-      const { data } = await client().post("/mixed_people/search", {
+      if (isDemoMode()) {
+        return {
+          demo: true,
+          total: 3,
+          page,
+          people: [
+            {
+              id: demoId("apollo_person"),
+              name: "Maya Patel",
+              title: filters.person_titles?.[0] || "Head of Growth",
+              email: "maya.patel@example.com",
+              linkedin_url: "https://linkedin.com/in/maya-patel-example",
+              organization: "Northstar Analytics",
+              location: "San Francisco, CA",
+            },
+            {
+              id: demoId("apollo_person"),
+              name: "Jordan Lee",
+              title: "VP Sales",
+              email: "jordan.lee@example.com",
+              linkedin_url: "https://linkedin.com/in/jordan-lee-example",
+              organization: "SignalForge",
+              location: "Austin, TX",
+            },
+          ].slice(0, per_page),
+        };
+      }
+
+      const { data } = await client().post("/mixed_people/api_search", {
         ...filters,
         page,
         per_page,
@@ -80,6 +109,23 @@ export const tools = [
       },
     },
     handler: async (input) => {
+      if (isDemoMode()) {
+        return {
+          demo: true,
+          found: true,
+          id: demoId("apollo_person"),
+          name: [input.first_name || "Maya", input.last_name || "Patel"].join(" "),
+          title: "Head of Growth",
+          email: input.email || "maya.patel@example.com",
+          phone: "+14155550148",
+          linkedin_url: input.linkedin_url || "https://linkedin.com/in/maya-patel-example",
+          organization: input.organization_name || "Northstar Analytics",
+          seniority: "head",
+          departments: ["marketing", "growth"],
+          location: "San Francisco, CA",
+        };
+      }
+
       const { data } = await client().post("/people/match", input);
       const p = data.person;
       if (!p) return { found: false };
