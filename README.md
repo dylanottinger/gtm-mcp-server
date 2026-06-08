@@ -1,6 +1,6 @@
 # GTM MCP Server
 
-A single [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that wires together the tools a Go-To-Market team actually uses HubSpot, Clay, Apollo, Slack, and email — so any MCP-compatible AI client (Claude Desktop, Claude Code, Cursor, etc.) can prospect, enrich, update your CRM, and fire off notifications without leaving the conversation.
+A single [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that wires together the tools a Go-To-Market team actually uses HubSpot, Clay, Apollo, Slack, and email  so any MCP-compatible AI client (Claude Desktop, Claude Code, Cursor, etc.) can prospect, enrich, update your CRM, and fire off notifications without leaving the conversation.
 
 ## Tools
 
