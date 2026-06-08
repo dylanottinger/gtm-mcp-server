@@ -1,0 +1,19 @@
+{
+  "name": "gtm-mcp-server",
+  "version": "1.0.0",
+  "description": "GTM MCP Server — HubSpot, Clay, Apollo, Slack, Email in one endpoint",
+  "type": "module",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "axios": "^1.7.0",
+    "nodemailer": "^8.0.10"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
