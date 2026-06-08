@@ -2,6 +2,76 @@
 
 A single [Model Context Protocol (MCP)](https://modelcontextprotocol.io) server that wires together the tools a Go-To-Market team actually uses HubSpot, Clay, Apollo, Slack, and email  so any MCP-compatible AI client (Claude Desktop, Claude Code, Cursor, etc.) can prospect, enrich, update your CRM, and fire off notifications without leaving the conversation.
 
+## Why this exists
+
+Most AI agents can answer questions.
+
+Very few can execute GTM workflows.
+
+Revenue teams already run on systems like HubSpot, Apollo, Clay, Slack, and email. The problem is that those systems are usually exposed to humans through separate interfaces, not to agents through a shared execution layer.
+
+This project exposes those GTM systems through one MCP server so an AI agent can move across prospecting, enrichment, CRM updates, notifications, and email activity from a single prompt.
+
+Instead of switching between five tools, an agent can:
+
+1. Search Apollo for target prospects
+2. Enrich people or companies with Clay
+3. Create contacts and deals in HubSpot
+4. Notify the team in Slack
+5. Draft or log outbound email activity
+
+The goal is not to replace GTM systems.
+
+The goal is to make them agent-accessible.
+
+## Example workflow
+
+**Prompt**
+
+> Find VP Sales leaders at Series A cybersecurity companies in California and add qualified prospects to HubSpot.
+
+**Execution**
+
+```text
+Apollo prospect search
+  -> Clay person/company enrichment
+  -> HubSpot contact creation
+  -> Slack lead notification
+  -> Email draft or activity log
+```
+
+**Result**
+
+A multi-step GTM workflow executed from a single prompt, with each underlying action routed to the right system.
+
+## Architecture
+
+```text
+Claude / Cursor / MCP Client
+              |
+              v
+        GTM MCP Server
+              |
+   +----------+----------+----------+
+   |          |          |          |
+   v          v          v          v
+HubSpot     Apollo     Clay      Slack
+   |                                |
+   v                                v
+ Email                         Notifications
+```
+
+Each integration lives in its own tool file. `index.js` imports those tool modules, flattens them into one list, and registers everything on a single stdio MCP server.
+
+## Core features
+
+- One MCP endpoint for the core GTM stack
+- 14 tools across CRM, enrichment, prospecting, notifications, and email
+- Demo mode for credential-free review and portfolio walkthroughs
+- Modular tool files so new integrations are easy to add
+- Environment-based credentials with no secrets committed
+- Stdio transport for compatibility with MCP clients like Claude Desktop, Claude Code, and Cursor
+
 ## Tools
 
 ### HubSpot (5 tools)
@@ -42,9 +112,37 @@ Clay workspaces can expose enrichment through Enterprise API access, webhooks, o
 
 ---
 
+## Design decisions
+
+### Why one MCP server?
+
+Instead of running separate HubSpot, Apollo, Clay, Slack, and email MCP servers, this project exposes them through one GTM-oriented server.
+
+That keeps configuration simple and makes cross-system workflows feel natural. A single agent session can search, enrich, create CRM records, notify the team, and log activity without juggling multiple MCP connections.
+
+### Why modular tool files?
+
+Each provider has its own file under `tools/`. That keeps the repo easy to scan:
+
+```text
+tools/hubspot.js
+tools/clay.js
+tools/apollo.js
+tools/slack.js
+tools/email.js
+```
+
+Adding a new integration should mean adding one file and one import, not rewriting the server.
+
+### Why demo mode?
+
+Most reviewers will not have live HubSpot, Clay, Apollo, Slack, and SMTP credentials.
+
+`DEMO_MODE=true` lets every tool return realistic mock payloads locally, so someone reviewing the repo can exercise the whole MCP surface without external accounts or paid API access.
+
 ## Demo mode
 
-Most reviewers will not have HubSpot, Clay, Apollo, Slack, and SMTP credentials ready. Set `DEMO_MODE=true` and every tool returns realistic mock payloads without making external API calls.
+Set `DEMO_MODE=true` to run the server without live vendor credentials.
 
 ```bash
 DEMO_MODE=true npm test
